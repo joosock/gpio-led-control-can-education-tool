@@ -1,28 +1,9 @@
-# gpio-led-control
-
-
-
-## Getting started
-python3 gpioLED.py
-
-
-## GPIO - LED Control
-
-### 1) Selected PIN Number : 82
-
-<img src="images/pinMap.png" alt="alt text" width="600" height="400">
-
-<img src="images/raspPinMap.png" alt="alt text" width="600" height="400">
-
-### 2) Use Breadboard to Connect LED to Board PIN
-
-<img src="images/gpioLed.png" alt="alt text" width="600" height="500">
-
-## Code
-
-```
 import sys
 import os
+import argparse
+import threading
+import IPC_Library
+import time
 
 GPIO_EXPORT_PATH = "/sys/class/gpio/export"
 GPIO_UNEXPORT_PATH = "/sys/class/gpio/unexport"
@@ -80,21 +61,33 @@ if __name__ == "__main__":
     value = int(sys.argv[3])
 
     try:
+        micom_thread = threading.Thread(target=IPC_Library.IPC_ReceivePacketFromIPCHeader, args=("/dev/tcc_ipc_micom", 1))
+        micom_thread.start()
+
         # Export the GPIO
         export_gpio(gpio_number)
 
         # Set GPIO direction
         set_gpio_direction(gpio_number, direction)
 
+        while True:
+            print("IPC_Library.received_pucData", ' '.join(format(byte, '02X') for byte in IPC_Library.received_pucData))
+            
+            if IPC_Library.received_pucData and IPC_Library.received_pucData[0] == 1:
+                set_gpio_value(gpio_number, 1)
+                print("Value is 1")
+            elif IPC_Library.received_pucData and IPC_Library.received_pucData[0] == 0:
+                set_gpio_value(gpio_number, 0)
+                print("Value is 0")
+            else:
+                print("Value is neither 1 nor 0")
+
+            time.sleep(1)
         # Set GPIO value
-        set_gpio_value(gpio_number, value)
+        #set_gpio_value(gpio_number, value)
     except KeyboardInterrupt:
         set_gpio_value(gpio_number, 0)
         unexport_gpio(gpio_number)
 
     print(f"GPIO value: {value}")
     sys.exit(0)
-```
-
-## Result
-![Alt text](images/gpioLed.mp4)
